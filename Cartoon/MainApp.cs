@@ -13,6 +13,7 @@ using Accord.MachineLearning;
 using Accord.Math.Distances;
 using Accord.Imaging.Converters;
 
+
 namespace Cartoon
 {
     public partial class App : Form
@@ -77,7 +78,7 @@ namespace Cartoon
                     return;         //result image click is null
 
                 toolSSHSVColor.BackColor = pxlcolor;
-                ColorToHSV(pxlcolor, out hue, out saturation, out value);
+                Utilities.colorToHSV(pxlcolor, out hue, out saturation, out value);
                 string colortxt = "HSV:    [" + (Math.Round(hue, 2)/2) + "," + Math.Round(saturation, 2) + "," + Math.Round(value, 2) + "]";
                 toolSSColorTag.Text = colortxt;
 
@@ -140,7 +141,7 @@ namespace Cartoon
             {
 
                 int red, green, blue, i, n = currentScheme.BucketCount();
-                Boolean extrared = false;
+                Boolean extraRed = false;
                 MCvScalar upper;
                 MCvScalar lower;
 
@@ -154,22 +155,22 @@ namespace Cartoon
                 if (currentScheme.redup.V2!=0)
                 {
                     n += 1;
-                    extrared = true;
+                    extraRed = true;
                 }
 
                 for (i = 0; i < n; i++)
                 {
-                    if (extrared && i == n - 1)         //Accounts for Red range missed
+                    if (extraRed && i == n - 1)         //Accounts for Red range missed
                     {
                         Hsv hsv = currentScheme.redhsv;
-                        HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out red, out green, out blue);
+                        Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out red, out green, out blue);
                         lower = currentScheme.reddown;
                         upper = currentScheme.redup;
                     }
                     else                                //Get HSV color and limits
                     {
                         Hsv hsv = currentScheme.GetBucket(i).GetHsv();
-                        HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out red, out green, out blue);
+                        Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out red, out green, out blue);
                         upper = currentScheme.GetBucket(i).GetUpper();
                         lower = currentScheme.GetBucket(i).GetLower();
                     }
@@ -231,7 +232,7 @@ namespace Cartoon
                 }
                 else                              //No KMeans -> Custom color
                 {
-                    HsvToRgb(BackgroundColor.Hue, BackgroundColor.Satuation, BackgroundColor.Value, out red, out green, out blue);
+                    Utilities.hsvToRgb(BackgroundColor.Hue, BackgroundColor.Satuation, BackgroundColor.Value, out red, out green, out blue);
                     Graphics g = Graphics.FromImage(bmp);
                     g.Clear(Color.FromArgb(red,green,blue));
                     x = bmp.ToImage<Bgr, Byte>();                   //x is the color bitmap and is reused here
@@ -387,16 +388,6 @@ namespace Cartoon
             currentScheme.Empty();
         }
 
-        //Converts a System.Drawing Color to HSV
-        public static void ColorToHSV(Color color, out double hue, out double saturation, out double value)
-        {
-            int max = Math.Max(color.R, Math.Max(color.G, color.B));
-            int min = Math.Min(color.R, Math.Min(color.G, color.B));
-            hue = color.GetHue();
-            saturation = (max == 0) ? 0 : 1d - (1d * min / max);
-            value = max / 255d;
-        }
-
         //KMeans takes the image and graphs the pixels present and finds centroids to the pixel colors
         //KVal determines how many clusters are present
         //Returns a KMeans rendered image
@@ -469,96 +460,6 @@ namespace Cartoon
             pbxRsltImg.Image = result;
         }
 
-        //Converts HSV color to RGB
-        //Snagged from https://stackoverflow.com/questions/1335426/is-there-a-built-in-c-net-system-api-for-hsv-to-rgb
-        //By Patrik Svensson
-        void HsvToRgb(double h, double S, double V, out int r, out int g, out int b)
-        {
-            double H = h*2;
-            while (H < 0) { H += 360; };
-            while (H >= 360) { H -= 360; };
-            double R, G, B;
-            if (V <= 0)
-            { R = G = B = 0; }
-            else if (S <= 0)
-            {
-                R = G = B = V;
-            }
-            else
-            {
-                double hf = H / 60.0;
-                int i = (int)Math.Floor(hf);
-                double f = hf - i;
-                double pv = V * (1 - S);
-                double qv = V * (1 - S * f);
-                double tv = V * (1 - S * (1 - f));
-                switch (i)
-                {
-                    // Red is the dominant color
-                    case 0:
-                        R = V;
-                        G = tv;
-                        B = pv;
-                        break;
-                    // Green is the dominant color
-                    case 1:
-                        R = qv;
-                        G = V;
-                        B = pv;
-                        break;
-                    case 2:
-                        R = pv;
-                        G = V;
-                        B = tv;
-                        break;
-                    // Blue is the dominant color
-                    case 3:
-                        R = pv;
-                        G = qv;
-                        B = V;
-                        break;
-                    case 4:
-                        R = tv;
-                        G = pv;
-                        B = V;
-                        break;
-                    // Red is the dominant color
-                    case 5:
-                        R = V;
-                        G = pv;
-                        B = qv;
-                        break;
-                    // Just in case we overshoot on our math by a little, we put these here. Since its a switch it won't slow us down at all to put these here.
-                    case 6:
-                        R = V;
-                        G = tv;
-                        B = pv;
-                        break;
-                    case -1:
-                        R = V;
-                        G = pv;
-                        B = qv;
-                        break;
-                    // The color is not defined, we should throw an error.
-                    default:
-                        //LFATAL("i Value error in Pixel conversion, Value is %d", i);
-                        R = G = B = V; // Just pretend its black/white
-                        break;
-                }
-            }
-            r = Clamp((int)(R * 255.0));
-            g = Clamp((int)(G * 255.0));
-            b = Clamp((int)(B * 255.0));
-        }
-
-        /// Clamp a value to 0-255
-        int Clamp(int i)
-        {
-            if (i < 0) return 0;
-            if (i > 255) return 255;
-            return i;
-        }
-
         //pbxColor_Click Event handeler
         //Handels Color changes, bucket changes, and deleting a color
         private void pbxColor_Click(object sender, EventArgs e)
@@ -606,7 +507,7 @@ namespace Cartoon
                             if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                             {
                                 hsv = CMF.getHsv();
-                                HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                 pbxColor1.BackColor = Color.FromArgb(r, g, b);
                                 Montucket.SetUpper(currentScheme.GetBucket(0).GetUpper());
                                 Montucket.SetLower(currentScheme.GetBucket(0).GetLower());
@@ -664,7 +565,7 @@ namespace Cartoon
                             if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                             {
                                 hsv = CMF.getHsv();
-                                HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                 pbxColor2.BackColor = Color.FromArgb(r, g, b);
                                 Montucket.SetUpper(currentScheme.GetBucket(1).GetUpper());
                                 Montucket.SetLower(currentScheme.GetBucket(1).GetLower());
@@ -715,7 +616,7 @@ namespace Cartoon
                             if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                             {
                                 hsv = CMF.getHsv();
-                                HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                 pbxColor3.BackColor = Color.FromArgb(r, g, b);
                                 Montucket.SetUpper(currentScheme.GetBucket(2).GetUpper());
                                 Montucket.SetLower(currentScheme.GetBucket(2).GetLower());
@@ -766,7 +667,7 @@ namespace Cartoon
                             if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                             {
                                 hsv = CMF.getHsv();
-                                HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                 pbxColor4.BackColor = Color.FromArgb(r, g, b);
                                 Montucket.SetUpper(currentScheme.GetBucket(3).GetUpper());
                                 Montucket.SetLower(currentScheme.GetBucket(3).GetLower());
@@ -817,7 +718,7 @@ namespace Cartoon
                             if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                             {
                                 hsv = CMF.getHsv();
-                                HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                 pbxColor5.BackColor = Color.FromArgb(r, g, b);
                                 Montucket.SetUpper(currentScheme.GetBucket(4).GetUpper());
                                 Montucket.SetLower(currentScheme.GetBucket(4).GetLower());
@@ -869,7 +770,7 @@ namespace Cartoon
                             if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                             {
                                 hsv = CMF.getHsv();
-                                HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                 pbxColor6.BackColor = Color.FromArgb(r, g, b);
                                 Montucket.SetUpper(currentScheme.GetBucket(5).GetUpper());
                                 Montucket.SetLower(currentScheme.GetBucket(5).GetLower());
@@ -921,7 +822,7 @@ namespace Cartoon
                             if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                             {
                                 hsv = CMF.getHsv();
-                                HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                 pbxColor7.BackColor = Color.FromArgb(r, g, b);
                                 Montucket.SetUpper(currentScheme.GetBucket(6).GetUpper());
                                 Montucket.SetLower(currentScheme.GetBucket(6).GetLower());
@@ -973,7 +874,7 @@ namespace Cartoon
                             if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                             {
                                 hsv = CMF.getHsv();
-                                HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                 pbxColor8.BackColor = Color.FromArgb(r, g, b);
                                 Montucket.SetUpper(currentScheme.GetBucket(7).GetUpper());
                                 Montucket.SetLower(currentScheme.GetBucket(7).GetLower());
@@ -1025,7 +926,7 @@ namespace Cartoon
                             if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                             {
                                 hsv = CMF.getHsv();
-                                HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                 pbxColor9.BackColor = Color.FromArgb(r, g, b);
                                 Montucket.SetUpper(currentScheme.GetBucket(8).GetUpper());
                                 Montucket.SetLower(currentScheme.GetBucket(8).GetLower());
@@ -1083,7 +984,7 @@ namespace Cartoon
                                 if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                                 {
                                     hsv = CMF.getHsv();
-                                    HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                    Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                     pbxColor10.BackColor = Color.FromArgb(r, g, b);
                                     Montucket.SetUpper(currentScheme.GetBucket(9).GetUpper());
                                     Montucket.SetLower(currentScheme.GetBucket(9).GetLower());
@@ -1135,7 +1036,7 @@ namespace Cartoon
                             if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                             {
                                 hsv = CMF.getHsv();
-                                HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                 pbxColor11.BackColor = Color.FromArgb(r, g, b);
                                 Montucket.SetUpper(currentScheme.GetBucket(10).GetUpper());
                                 Montucket.SetLower(currentScheme.GetBucket(10).GetLower());
@@ -1187,7 +1088,7 @@ namespace Cartoon
                             if (CMF.DialogResult.Equals(DialogResult.OK))                   //Change the hsv color for that bucket
                             {
                                 hsv = CMF.getHsv();
-                                HsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
+                                Utilities.hsvToRgb(hsv.Hue, hsv.Satuation, hsv.Value, out r, out g, out b);
                                 pbxColor12.BackColor = Color.FromArgb(r, g, b);
                                 Montucket.SetUpper(currentScheme.GetBucket(11).GetUpper());
                                 Montucket.SetLower(currentScheme.GetBucket(11).GetLower());

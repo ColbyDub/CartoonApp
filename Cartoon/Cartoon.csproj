@@ -104,6 +104,7 @@
       <DependentUpon>ColorManuForm.cs</DependentUpon>
     </Compile>
     <Compile Include="ColorScheme.cs" />
+    <Compile Include="Utilities.cs" />
     <Compile Include="MainApp.cs">
       <SubType>Form</SubType>
     </Compile>
